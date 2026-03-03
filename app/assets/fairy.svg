@@ -1,0 +1,34 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 320" role="img" aria-label="카드의요정">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#15345f"/>
+      <stop offset="100%" stop-color="#2b5f98"/>
+    </linearGradient>
+    <linearGradient id="wing" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#b6f6ff"/>
+      <stop offset="100%" stop-color="#69d7ff"/>
+    </linearGradient>
+    <linearGradient id="dress" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#8ee3b3"/>
+      <stop offset="100%" stop-color="#2fa26c"/>
+    </linearGradient>
+  </defs>
+  <rect x="8" y="8" width="304" height="304" rx="44" fill="url(#bg)"/>
+  <ellipse cx="106" cy="146" rx="52" ry="36" fill="url(#wing)" opacity="0.78"/>
+  <ellipse cx="214" cy="146" rx="52" ry="36" fill="url(#wing)" opacity="0.78"/>
+  <ellipse cx="106" cy="174" rx="42" ry="30" fill="url(#wing)" opacity="0.58"/>
+  <ellipse cx="214" cy="174" rx="42" ry="30" fill="url(#wing)" opacity="0.58"/>
+  <circle cx="160" cy="104" r="26" fill="#ffd8aa"/>
+  <path d="M134 96 C145 72, 175 72, 186 96" stroke="#3f2a1a" stroke-width="6" fill="none" stroke-linecap="round"/>
+  <circle cx="149" cy="104" r="3.6" fill="#1f1c1b"/>
+  <circle cx="171" cy="104" r="3.6" fill="#1f1c1b"/>
+  <path d="M148 118 Q160 126 172 118" stroke="#c86b78" stroke-width="4" fill="none" stroke-linecap="round"/>
+  <path d="M134 146 L186 146 L205 230 L115 230 Z" fill="url(#dress)"/>
+  <rect x="141" y="152" width="38" height="48" rx="10" fill="#2a7d52" opacity="0.55"/>
+  <path d="M160 140 L160 246" stroke="#ffe7a9" stroke-width="5" stroke-linecap="round"/>
+  <path d="M139 220 L181 220" stroke="#ffe7a9" stroke-width="5" stroke-linecap="round"/>
+  <circle cx="160" cy="252" r="8" fill="#ffe7a9"/>
+  <circle cx="234" cy="82" r="5" fill="#ffe7a9"/>
+  <circle cx="260" cy="112" r="3.4" fill="#ffe7a9"/>
+  <circle cx="78" cy="88" r="4.4" fill="#ffe7a9"/>
+</svg>

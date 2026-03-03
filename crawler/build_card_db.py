@@ -66,6 +66,8 @@ query smartSearch(
     cardAds {
       cardAdId
       cardName
+      cardImage
+      cardImageUrl
       companyCode
       titleDescription
       domesticAnnualFee
@@ -100,6 +102,7 @@ class CardRow:
     name: str
     issuer: str
     summary: str
+    card_image_url: str
     min_spend_required_krw: int | None
     domestic_annual_fee: int | None
     foreign_annual_fee: int | None
@@ -182,11 +185,23 @@ def _to_card_row(raw: dict) -> CardRow:
         if parsed_name and parsed_name not in benefit_names:
             benefit_names.append(parsed_name)
 
+    image_url = str(raw.get("cardImageUrl") or "").strip()
+    if not image_url:
+        # cardImage 상대 경로를 절대 URL로 보정한다.
+        image_path = str(raw.get("cardImage") or "").strip()
+        if image_path.startswith("//"):
+            image_url = f"https:{image_path}"
+        elif image_path.startswith("/"):
+            image_url = f"https://card-search.naver.com{image_path}"
+        else:
+            image_url = image_path
+
     return CardRow(
         card_ad_id=card_ad_id,
         name=str(raw.get("cardName", "")).strip(),
         issuer=issuer,
         summary=str(raw.get("titleDescription", "")).strip(),
+        card_image_url=image_url,
         min_spend_required_krw=None,
         domestic_annual_fee=raw.get("domesticAnnualFee"),
         foreign_annual_fee=raw.get("foreignAnnualFee"),
@@ -224,6 +239,7 @@ def init_db(conn: sqlite3.Connection) -> None:
             name TEXT NOT NULL,
             issuer TEXT,
             summary TEXT,
+            card_image_url TEXT,
             min_spend_required_krw INTEGER,
             domestic_annual_fee INTEGER,
             foreign_annual_fee INTEGER,
@@ -247,6 +263,7 @@ def replace_cards(conn: sqlite3.Connection, rows: list[CardRow]) -> None:
             name,
             issuer,
             summary,
+            card_image_url,
             min_spend_required_krw,
             domestic_annual_fee,
             foreign_annual_fee,
@@ -254,7 +271,7 @@ def replace_cards(conn: sqlite3.Connection, rows: list[CardRow]) -> None:
             benefit_tags,
             detail_url,
             source
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """,
         [
             (
@@ -262,6 +279,7 @@ def replace_cards(conn: sqlite3.Connection, rows: list[CardRow]) -> None:
                 r.name,
                 r.issuer,
                 r.summary,
+                r.card_image_url,
                 r.min_spend_required_krw,
                 r.domestic_annual_fee,
                 r.foreign_annual_fee,
