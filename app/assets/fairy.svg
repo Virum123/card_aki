@@ -1,34 +1,51 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 320" role="img" aria-label="카드의요정">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 320" role="img" aria-label="카드 사냥 요정">
   <defs>
     <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0%" stop-color="#15345f"/>
-      <stop offset="100%" stop-color="#2b5f98"/>
+      <stop offset="0%" stop-color="#102746"/>
+      <stop offset="100%" stop-color="#1f4f82"/>
     </linearGradient>
     <linearGradient id="wing" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0%" stop-color="#b6f6ff"/>
-      <stop offset="100%" stop-color="#69d7ff"/>
+      <stop offset="0%" stop-color="#bff4ff"/>
+      <stop offset="100%" stop-color="#67d4ff"/>
     </linearGradient>
-    <linearGradient id="dress" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0%" stop-color="#8ee3b3"/>
-      <stop offset="100%" stop-color="#2fa26c"/>
+    <linearGradient id="outfit" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#94ebb5"/>
+      <stop offset="100%" stop-color="#1f9b60"/>
+    </linearGradient>
+    <linearGradient id="net" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#9cc7ff"/>
+      <stop offset="100%" stop-color="#e8f2ff"/>
     </linearGradient>
   </defs>
+
   <rect x="8" y="8" width="304" height="304" rx="44" fill="url(#bg)"/>
-  <ellipse cx="106" cy="146" rx="52" ry="36" fill="url(#wing)" opacity="0.78"/>
-  <ellipse cx="214" cy="146" rx="52" ry="36" fill="url(#wing)" opacity="0.78"/>
-  <ellipse cx="106" cy="174" rx="42" ry="30" fill="url(#wing)" opacity="0.58"/>
-  <ellipse cx="214" cy="174" rx="42" ry="30" fill="url(#wing)" opacity="0.58"/>
-  <circle cx="160" cy="104" r="26" fill="#ffd8aa"/>
-  <path d="M134 96 C145 72, 175 72, 186 96" stroke="#3f2a1a" stroke-width="6" fill="none" stroke-linecap="round"/>
-  <circle cx="149" cy="104" r="3.6" fill="#1f1c1b"/>
-  <circle cx="171" cy="104" r="3.6" fill="#1f1c1b"/>
-  <path d="M148 118 Q160 126 172 118" stroke="#c86b78" stroke-width="4" fill="none" stroke-linecap="round"/>
-  <path d="M134 146 L186 146 L205 230 L115 230 Z" fill="url(#dress)"/>
-  <rect x="141" y="152" width="38" height="48" rx="10" fill="#2a7d52" opacity="0.55"/>
-  <path d="M160 140 L160 246" stroke="#ffe7a9" stroke-width="5" stroke-linecap="round"/>
-  <path d="M139 220 L181 220" stroke="#ffe7a9" stroke-width="5" stroke-linecap="round"/>
-  <circle cx="160" cy="252" r="8" fill="#ffe7a9"/>
-  <circle cx="234" cy="82" r="5" fill="#ffe7a9"/>
-  <circle cx="260" cy="112" r="3.4" fill="#ffe7a9"/>
-  <circle cx="78" cy="88" r="4.4" fill="#ffe7a9"/>
+
+  <ellipse cx="95" cy="145" rx="50" ry="34" fill="url(#wing)" opacity="0.82"/>
+  <ellipse cx="224" cy="145" rx="50" ry="34" fill="url(#wing)" opacity="0.82"/>
+  <ellipse cx="95" cy="174" rx="38" ry="28" fill="url(#wing)" opacity="0.6"/>
+  <ellipse cx="224" cy="174" rx="38" ry="28" fill="url(#wing)" opacity="0.6"/>
+
+  <circle cx="150" cy="98" r="24" fill="#ffd9b3"/>
+  <path d="M126 92 C134 70, 166 70, 174 92" stroke="#342216" stroke-width="6" fill="none" stroke-linecap="round"/>
+  <circle cx="141" cy="99" r="3.5" fill="#1f1b19"/>
+  <circle cx="160" cy="99" r="3.5" fill="#1f1b19"/>
+  <path d="M139 113 Q150 120 163 112" stroke="#ce6977" stroke-width="4" fill="none" stroke-linecap="round"/>
+
+  <path d="M122 138 L178 138 L198 228 L106 228 Z" fill="url(#outfit)"/>
+  <rect x="139" y="146" width="28" height="46" rx="9" fill="#23724a" opacity="0.6"/>
+
+  <path d="M115 155 L85 132" stroke="#ffdca7" stroke-width="6" stroke-linecap="round"/>
+  <path d="M180 160 L224 120" stroke="#ffdca7" stroke-width="6" stroke-linecap="round"/>
+
+  <circle cx="246" cy="104" r="28" fill="none" stroke="url(#net)" stroke-width="5"/>
+  <path d="M222 104 H270 M246 80 V128" stroke="url(#net)" stroke-width="2"/>
+  <path d="M229 87 L263 121 M263 87 L229 121" stroke="url(#net)" stroke-width="2"/>
+
+  <rect x="238" y="166" width="26" height="40" rx="5" fill="#f3f8ff" stroke="#84a8d6" stroke-width="2" transform="rotate(14 251 186)"/>
+  <rect x="232" y="171" width="26" height="40" rx="5" fill="#ffffff" stroke="#84a8d6" stroke-width="2" transform="rotate(-4 245 191)"/>
+  <rect x="226" y="178" width="26" height="40" rx="5" fill="#f7fbff" stroke="#84a8d6" stroke-width="2" transform="rotate(-17 239 198)"/>
+
+  <circle cx="270" cy="72" r="4" fill="#ffe49e"/>
+  <circle cx="60" cy="82" r="4" fill="#ffe49e"/>
+  <circle cx="84" cy="60" r="3" fill="#ffe49e"/>
 </svg>

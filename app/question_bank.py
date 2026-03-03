@@ -48,11 +48,11 @@ QUESTIONS = [
     },
     {
         "id": "mileage_airline",
-        "title": "어느 항공사 마일리지를 선호하시나요?",
+        "title": "대한항공 마일리지를 선호하시나요?",
         "type": "single",
         "options": [
-            {"label": "대한항공", "value": "korean_air"},
-            {"label": "그 외", "value": "others"},
+            {"label": "예", "value": "yes"},
+            {"label": "아니오", "value": "no"},
         ],
         "visible_if": {"question_id": "mileage_interest", "equals": "yes"},
     },

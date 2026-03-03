@@ -6,6 +6,7 @@
 from __future__ import annotations
 
 import sqlite3
+import time
 from pathlib import Path
 
 import pandas as pd
@@ -20,7 +21,24 @@ except ModuleNotFoundError:
 DB_PATH = Path("data/cards.db")
 FAIRY_IMAGE_PATH = Path("app/assets/fairy.svg")
 
-OVERSEAS_KEYWORDS = ["외화결제", "해외", "해외이용", "해외결제", "직구"]
+OVERSEAS_KEYWORDS = [
+    "외화결제",
+    "해외",
+    "해외이용",
+    "해외결제",
+    "직구",
+    "travel",
+    "공항",
+    "라운지",
+    "면세",
+    "환전",
+    "visa",
+    "master",
+    "amex",
+    "jcb",
+    "unionpay",
+    "유니온페이",
+]
 MILEAGE_KEYWORDS = ["항공마일리지", "마일리지", "스카이패스", "대한항공", "아시아나"]
 CAFE_KEYWORDS = ["카페", "베이커리", "스타벅스", "투썸", "커피"]
 DINING_KEYWORDS = ["외식", "배달", "요기요", "배민", "식당", "레스토랑"]
@@ -41,6 +59,8 @@ SUBSCRIPTION_KEYWORDS = [
     "쿠팡플레이",
     "spotify",
     "애플뮤직",
+    "문화",
+    "디지털",
 ]
 SIMPLEPAY_KEYWORDS = ["간편결제", "삼성페이", "네이버페이", "카카오페이", "pay"]
 CAR_KEYWORDS = ["오토", "주유", "하이패스", "주차", "차량"]
@@ -55,11 +75,11 @@ TAG_ALIAS_MAP = {
     "쇼핑": ["쇼핑", "대형마트"],
     "편의점": ["편의점"],
     "통신": ["통신"],
-    "구독": [],
+    "구독": ["문화"],
     "간편결제": ["간편결제"],
     "차": ["오토", "주유", "하이패스"],
     "대중교통": ["대중교통"],
-    "해외": ["외화결제"],
+    "해외": ["외화결제", "레저"],
     "마일리지": ["항공마일리지"],
 }
 
@@ -235,6 +255,51 @@ def apply_question_filter(frame: pd.DataFrame, question_id: str, answer) -> pd.D
             return frame[fee >= low]
         return frame[fee.between(low, high)]
 
+    # 생활/혜택 질문은 yes/no에 따라 포함/제외 필터를 적용한다.
+    yesno_filters: dict[str, tuple[str, list[str]]] = {
+        "overseas_yesno": ("해외", OVERSEAS_KEYWORDS),
+        "bakery_cafe_yesno": ("카페", CAFE_KEYWORDS),
+        "dining_delivery_yesno": ("외식", DINING_KEYWORDS),
+        "shopping_yesno": ("쇼핑", SHOPPING_KEYWORDS),
+        "convenience_yesno": ("편의점", CONVENIENCE_KEYWORDS),
+        "telecom_yesno": ("통신", TELECOM_KEYWORDS),
+        "ott_streaming_yesno": ("구독", SUBSCRIPTION_KEYWORDS),
+        "simplepay_yesno": ("간편결제", SIMPLEPAY_KEYWORDS),
+        "car_benefit_yesno": ("차", CAR_KEYWORDS),
+        "public_transport_yesno": ("대중교통", PUBLIC_TRANSPORT_KEYWORDS),
+    }
+    if question_id in yesno_filters:
+        logical_key, fallback_keywords = yesno_filters[question_id]
+        mask = _keyword_match_mask(frame, logical_key, fallback_keywords)
+        if answer == "yes":
+            return frame[mask]
+        if answer == "no":
+            return frame[~mask]
+        return frame
+
+    if question_id == "mileage_interest":
+        mileage_mask = _keyword_match_mask(frame, "마일리지", MILEAGE_KEYWORDS)
+        if answer == "yes":
+            return frame[mileage_mask]
+        if answer == "no":
+            return frame[~mileage_mask]
+        return frame
+
+    if question_id == "mileage_airline":
+        ka_mask = frame["combined_text"].str.contains("대한항공|스카이패스|korean air", na=False)
+        if answer == "yes":
+            return frame[ka_mask]
+        if answer == "no":
+            return frame[~ka_mask]
+        return frame
+
+    if question_id == "internet_bank_main":
+        if answer == "yes":
+            return frame[frame["issuer"].isin(INTERNET_BANK_YES_ISSUERS)]
+        if answer == "no":
+            return frame[frame["issuer"].isin(INTERNET_BANK_NO_ISSUERS)]
+        return frame
+
     return frame
 
 
@@ -267,12 +332,12 @@ def apply_match_score(frame: pd.DataFrame, answers: dict[str, object]) -> pd.Dat
     # 마일리지 항공사 선호는 하드 필터 대신 가중치만 적용한다.
     if answers.get("mileage_interest") == "yes":
         airline = answers.get("mileage_airline")
-        if airline in {"korean_air", "others"}:
+        if airline in {"yes", "no"}:
             weight = WEIGHTS["mileage_airline"]
             ka_mask = out["combined_text"].str.contains("대한항공|스카이패스|korean air", na=False)
             mileage_mask = _keyword_match_mask(out, "마일리지", MILEAGE_KEYWORDS)
             out["max_score"] += weight
-            if airline == "korean_air":
+            if airline == "yes":
                 out.loc[ka_mask, "match_score"] += weight
             else:
                 out.loc[mileage_mask & (~ka_mask), "match_score"] += weight
@@ -366,77 +431,112 @@ def render_question_input(question: dict, current_answer):
     return current_answer
 
 
-def render_filtering_animation(before_count: int, after_count: int) -> None:
-    """질문 완료 후 카드가 망으로 걸러지는 효과를 출력."""
+def render_filtering_animation(before_count: int, after_count: int, card_images: list[str]) -> None:
+    """질문 완료 후 카드 썸네일이 망에 걸러지는 애니메이션."""
+    safe_images = [img for img in card_images if img][:18]
+    images_js = str(safe_images)
     html = f"""
-    <div style=\"width:100%;border-radius:16px;background:#0d1625;padding:16px 18px;border:1px solid #1f2f4d;\">
-      <div style=\"display:flex;justify-content:space-between;align-items:center;color:#dbe8ff;\">
+    <div style="width:100%;border-radius:16px;background:#0d1625;padding:16px 18px;border:1px solid #1f2f4d;">
+      <div style="display:flex;justify-content:space-between;align-items:center;color:#dbe8ff;">
         <strong>카드 망 필터링 진행 중...</strong>
-        <span id=\"countText\" style=\"color:#8ef2c8;font-weight:700;\">{before_count} -> {after_count}</span>
+        <span id="countText" style="color:#8ef2c8;font-weight:700;">{before_count} -> {after_count}</span>
       </div>
-      <canvas id=\"netCanvas\" width=\"980\" height=\"180\" style=\"width:100%;height:180px;margin-top:10px;\"></canvas>
+      <canvas id="netCanvas" width="980" height="250" style="width:100%;height:250px;margin-top:10px;border-radius:12px;background:#0a1220;"></canvas>
     </div>
     <script>
       const canvas = document.getElementById('netCanvas');
       const ctx = canvas.getContext('2d');
+      const countText = document.getElementById('countText');
+      const imageUrls = {images_js};
+      const loaded = [];
       let progress = 0;
       let shown = {before_count};
       const target = {after_count};
-      const countText = document.getElementById('countText');
-      function draw() {{
-        ctx.clearRect(0,0,canvas.width,canvas.height);
-        const rows = 7;
-        const cols = 14;
-        const shrink = 1 - (progress * 0.72);
-        const offsetX = (canvas.width * (1 - shrink)) / 2;
-        const offsetY = (canvas.height * (1 - shrink)) / 2;
 
-        ctx.strokeStyle = '#63a7ff';
-        ctx.lineWidth = 1.1;
-
-        for (let r=0; r<rows; r++) {{
-          for (let c=0; c<cols; c++) {{
-            const x = offsetX + (c / (cols-1)) * canvas.width * shrink;
-            const y = offsetY + (r / (rows-1)) * canvas.height * shrink;
-            if (c < cols-1) {{
-              const nx = offsetX + ((c+1) / (cols-1)) * canvas.width * shrink;
-              ctx.beginPath();
-              ctx.moveTo(x,y);
-              ctx.lineTo(nx,y);
-              ctx.stroke();
-            }}
-            if (r < rows-1) {{
-              const ny = offsetY + ((r+1) / (rows-1)) * canvas.height * shrink;
-              ctx.beginPath();
-              ctx.moveTo(x,y);
-              ctx.lineTo(x,ny);
-              ctx.stroke();
-            }}
+      function initCards() {{
+        if (imageUrls.length === 0) {{
+          for (let i = 0; i < 14; i++) {{
+            loaded.push({{img:null,x:40+i*64,y:20+(i%3)*18,w:56,h:84,vy:1.2+Math.random()*0.8}});
           }}
+          return;
         }}
-
-        ctx.fillStyle = '#ffde8a';
-        ctx.beginPath();
-        ctx.arc(canvas.width/2, canvas.height/2, 9, 0, Math.PI*2);
-        ctx.fill();
+        imageUrls.forEach((u, i) => {{
+          const img = new Image();
+          img.src = u;
+          loaded.push({{
+            img: img,
+            x: 30 + (i % 9) * 102 + Math.random()*10,
+            y: 18 + Math.floor(i / 9) * 90 + Math.random()*8,
+            w: 58,
+            h: 86,
+            vy: 1.1 + Math.random() * 1.0
+          }});
+        }});
       }}
 
-      const timer = setInterval(() => {{
-        progress += 0.035;
+      function drawNet(cx, cy, scale) {{
+        ctx.save();
+        ctx.translate(cx, cy);
+        ctx.scale(scale, scale);
+        ctx.strokeStyle = '#79b4ff';
+        ctx.lineWidth = 1.2;
+        for (let x = -120; x <= 120; x += 24) {{
+          ctx.beginPath(); ctx.moveTo(x, -70); ctx.lineTo(x, 70); ctx.stroke();
+        }}
+        for (let y = -70; y <= 70; y += 20) {{
+          ctx.beginPath(); ctx.moveTo(-120, y); ctx.lineTo(120, y); ctx.stroke();
+        }}
+        ctx.restore();
+      }}
+
+      function drawCards() {{
+        loaded.forEach((c) => {{
+          c.y += c.vy * (0.8 + progress*1.1);
+          if (c.y > 215) c.y = 20;
+          ctx.save();
+          ctx.translate(c.x + c.w/2, c.y + c.h/2);
+          ctx.rotate((progress-0.5) * 0.16);
+          const x = -c.w/2, y = -c.h/2;
+          ctx.fillStyle = '#f4f8ff';
+          ctx.fillRect(x, y, c.w, c.h);
+          if (c.img && c.img.complete) {{
+            ctx.drawImage(c.img, x+2, y+2, c.w-4, c.h-4);
+          }} else {{
+            ctx.fillStyle = '#bed4ff';
+            ctx.fillRect(x+2, y+2, c.w-4, c.h-4);
+          }}
+          ctx.strokeStyle = '#7ea4d8';
+          ctx.lineWidth = 1.2;
+          ctx.strokeRect(x, y, c.w, c.h);
+          ctx.restore();
+        }});
+      }}
+
+      function frame() {{
+        progress = Math.min(1, progress + 0.018);
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+        const netScale = 1.0 - progress * 0.43;
+        const netY = 160 - progress * 38;
+        drawCards();
+        drawNet(canvas.width/2, netY, netScale);
+
         if (shown > target) {{
-          shown = Math.max(target, shown - Math.max(1, Math.ceil((shown - target) * 0.14)));
+          shown = Math.max(target, shown - Math.max(1, Math.ceil((shown - target) * 0.12)));
           countText.innerText = `${{shown}} -> {after_count}`;
         }}
-        draw();
-        if (progress >= 1) {{
-          clearInterval(timer);
+        if (progress < 1) {{
+          requestAnimationFrame(frame);
+        }} else {{
           countText.innerText = '{before_count} -> {after_count} (완료)';
         }}
-      }}, 35);
-      draw();
+      }}
+
+      initCards();
+      frame();
     </script>
     """
-    components.html(html, height=240)
+    components.html(html, height=310)
 
 
 def render_card_list(cards: pd.DataFrame) -> None:
@@ -483,13 +583,54 @@ def render_wizard(df: pd.DataFrame) -> None:
         st.session_state.survey_submitted = False
     if "visible_results" not in st.session_state:
         st.session_state.visible_results = 10
+    if "survey_phase" not in st.session_state:
+        st.session_state.survey_phase = "questions"
+    if "animation_started_at" not in st.session_state:
+        st.session_state.animation_started_at = 0.0
 
     active_questions = get_active_questions(st.session_state.survey_answers)
     total_questions = len(active_questions)
     step = min(st.session_state.survey_step, max(total_questions - 1, 0))
 
+    # 최종 결과 계산은 애니메이션/결과 화면 전환에 재사용한다.
+    final_filtered = filter_by_answers(df, st.session_state.survey_answers)
+    scored = apply_match_score(final_filtered, st.session_state.survey_answers)
+
     st.title("카드의요정")
     st.caption("요정과 대화하듯 질문에 답하면 조건에 맞는 카드만 남깁니다.")
+
+    if st.session_state.survey_phase == "animating":
+        st.subheader("질문 종료: 카드 망 필터링 결과")
+        render_filtering_animation(
+            before_count=len(df),
+            after_count=len(scored),
+            card_images=scored["card_image_url"].dropna().tolist()[:18],
+        )
+        st.caption("조건을 반영한 추천 결과로 이동 중입니다...")
+        wait_seconds = 2.2
+        elapsed = time.time() - float(st.session_state.animation_started_at or 0.0)
+        if elapsed < wait_seconds:
+            time.sleep(wait_seconds - elapsed)
+        st.session_state.survey_phase = "results"
+        st.rerun()
+
+    if st.session_state.survey_phase == "results":
+        st.subheader("당신에게 맞는 카드")
+        st.caption("상위 10개를 먼저 보여주고, 더보기로 남은 카드를 확인할 수 있습니다.")
+        if len(scored) == 0:
+            st.warning("조건을 모두 충족하는 카드가 없습니다. 연회비/실적 범위를 넓혀보세요.")
+        else:
+            render_card_list(scored)
+
+        if st.button("다시 질문하기", use_container_width=True):
+            st.session_state.survey_step = 0
+            st.session_state.survey_answers = {}
+            st.session_state.survey_submitted = False
+            st.session_state.visible_results = 10
+            st.session_state.survey_phase = "questions"
+            st.session_state.animation_started_at = 0.0
+            st.rerun()
+        return
 
     if total_questions == 0:
         st.warning("질문 정의가 비어 있습니다. app/question_bank.py를 확인해 주세요.")
@@ -537,10 +678,12 @@ def render_wizard(df: pd.DataFrame) -> None:
             st.session_state.survey_step = step + 1
             st.rerun()
     else:
-        if c2.button("결과 보기", use_container_width=True):
+        if c2.button("필터링 시작", use_container_width=True):
             st.session_state.survey_answers[qid] = answer
             st.session_state.survey_submitted = True
             st.session_state.visible_results = 10
+            st.session_state.survey_phase = "animating"
+            st.session_state.animation_started_at = time.time()
             st.rerun()
 
     if c3.button("처음부터", use_container_width=True):
@@ -548,25 +691,9 @@ def render_wizard(df: pd.DataFrame) -> None:
         st.session_state.survey_answers = {}
         st.session_state.survey_submitted = False
         st.session_state.visible_results = 10
+        st.session_state.survey_phase = "questions"
+        st.session_state.animation_started_at = 0.0
         st.rerun()
-
-    if not st.session_state.survey_submitted:
-        return
-
-    final_filtered = filter_by_answers(df, st.session_state.survey_answers)
-    scored = apply_match_score(final_filtered, st.session_state.survey_answers)
-
-    st.divider()
-    st.subheader("질문 종료: 카드 망 필터링 결과")
-    render_filtering_animation(before_count=len(df), after_count=len(scored))
-
-    st.subheader("당신에게 맞는 카드")
-    st.caption("상위 10개를 먼저 보여주고, 더보기로 남은 카드를 확인할 수 있습니다.")
-    if len(scored) == 0:
-        st.warning("조건을 모두 충족하는 카드가 없습니다. 연회비/실적 범위를 넓혀보세요.")
-        return
-
-    render_card_list(scored)
 
 
 inject_styles()
@@ -579,8 +706,10 @@ cards_df = load_cards()
 render_wizard(cards_df)
 
 with st.expander("실행 가이드", expanded=False):
-    st.code(
-        """uv run python crawler/build_card_db.py
-uv run streamlit run app/streamlit_app.py""",
-        language="bash",
+    st.markdown(
+        """
+1. 요정이 물어보는 질문에 대답해주세요.
+2. 질문이 완료되면 여행자님 성향에 맞는 카드가 추천돼요.
+3. 더 많은 카드를 보고싶으시다면 더보기를 눌러주세요.
+        """
     )
