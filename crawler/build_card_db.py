@@ -14,10 +14,12 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Iterable
 
+import pandas as pd
 import requests
 
 GRAPHQL_URL = "https://card-search.naver.com/graphql"
 DB_PATH = Path("data/cards.db")
+CSV_PATH = Path("cards_CRD_1076.csv")
 TIMEOUT_SECONDS = 20
 PAGE_SIZE = 10
 
@@ -110,6 +112,85 @@ class CardRow:
     benefit_tags: str
     detail_url: str
     source: str = "naver_card_search"
+
+
+def parse_fee_pair(text: str) -> tuple[int | None, int | None]:
+    """연회비 문자열에서 국내/해외 연회비를 추출한다."""
+    s = str(text or "")
+    if not s.strip():
+        return None, None
+
+    # 예: "국내전용 [5,000원] / 해외겸용 [5,000원]"
+    nums = [int(x.replace(",", "")) for x in re.findall(r"(\d[\d,]*)\s*원?", s)]
+    if not nums:
+        return None, None
+    if len(nums) == 1:
+        return nums[0], nums[0]
+    return nums[0], nums[1]
+
+
+def extract_benefit_tags(summary_text: str) -> str:
+    """혜택 요약 텍스트에서 카테고리 태그를 단순 추출한다."""
+    s = str(summary_text or "").strip()
+    if not s:
+        return ""
+
+    tags: list[str] = []
+    for segment in s.split("|"):
+        part = segment.strip()
+        if not part:
+            continue
+        # 예: "마트/편의점: GS가맹점..." -> "마트/편의점"
+        key = part.split(":", 1)[0].strip()
+        if key and key not in tags:
+            tags.append(key)
+    return ", ".join(tags)
+
+
+def _to_int_or_none(v) -> int | None:
+    if v is None:
+        return None
+    s = str(v).strip()
+    if not s or s.lower() == "nan":
+        return None
+    if re.fullmatch(r"-?\d+", s):
+        return int(s)
+    nums = re.findall(r"-?\d+", s.replace(",", ""))
+    return int(nums[0]) if nums else None
+
+
+def load_cards_from_csv(csv_path: Path) -> list[CardRow]:
+    """CSV(cards_CRD_1076.csv)에서 카드 목록을 로드한다."""
+    df = pd.read_csv(csv_path)
+    rows: list[CardRow] = []
+
+    for _, r in df.iterrows():
+        card_ad_id = _to_int_or_none(r.get("idx"))
+        if card_ad_id is None:
+            continue
+
+        domestic_fee, foreign_fee = parse_fee_pair(str(r.get("연회비", "")))
+        min_spend = _to_int_or_none(r.get("전월실적"))
+        summary = str(r.get("혜택(요약)", "") or "").strip()
+
+        rows.append(
+            CardRow(
+                card_ad_id=card_ad_id,
+                name=str(r.get("카드명", "") or "").strip(),
+                issuer=str(r.get("카드사", "") or "").strip(),
+                summary=summary,
+                card_image_url=str(r.get("카드이미지URL", "") or "").strip(),
+                min_spend_required_krw=min_spend,
+                domestic_annual_fee=domestic_fee,
+                foreign_annual_fee=foreign_fee,
+                family_annual_fee=None,
+                benefit_tags=extract_benefit_tags(summary),
+                detail_url=str(r.get("상세페이지추정", "") or "").strip(),
+                source="card_gorilla_csv",
+            )
+        )
+
+    return deduplicate(rows)
 
 
 def _build_session() -> requests.Session:
@@ -346,7 +427,12 @@ def save_debug_snapshot(rows: list[CardRow]) -> None:
 
 def main() -> None:
     DB_PATH.parent.mkdir(parents=True, exist_ok=True)
-    rows = crawl_cards()
+    if CSV_PATH.exists():
+        print(f"Loading cards from CSV: {CSV_PATH}")
+        rows = load_cards_from_csv(CSV_PATH)
+    else:
+        print("CSV not found. Fallback to Naver crawler.")
+        rows = crawl_cards()
 
     if not rows:
         raise RuntimeError("카드 데이터를 수집하지 못했습니다. 페이지 구조 변경 여부를 확인하세요.")

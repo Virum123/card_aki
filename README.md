@@ -11,6 +11,7 @@
 ## 데이터 소스
 - 네이버 카드검색: https://card-search.naver.com/list
 - 수집 방식: GraphQL `smartSearch` 페이지네이션 + 카드 상세 실적 보강
+- CSV 입력 우선 모드: 프로젝트 루트의 `cards_CRD_1076.csv`가 있으면 해당 파일로 DB를 생성
 
 ## 저장 데이터
 - `data/cards.db` (SQLite)
@@ -26,6 +27,10 @@ UV_CACHE_DIR=.uv-cache uv sync
 uv run python crawler/build_card_db.py
 uv run streamlit run app/streamlit_app.py
 ```
+
+`build_card_db.py` 동작 우선순위:
+1. `cards_CRD_1076.csv` 존재 시 CSV 기반 적재
+2. CSV 없을 때 Naver 크롤러 fallback
 
 기본 링크: http://localhost:8501
 
